@@ -1,0 +1,9 @@
+name: SnifferRide
+version: '1.0-SNAPSHOT'
+main: me.jc.snifferRide.SnifferRide
+api-version: '1.21'
+commands:
+  sniffer:
+    description: SnifferRide main command
+    usage: /sniffer reload
+    permission: sniffer.admin
