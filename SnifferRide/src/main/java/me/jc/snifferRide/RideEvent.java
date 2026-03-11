@@ -27,6 +27,7 @@ public class RideEvent implements Listener {
         this.plugin = plugin;
     }
     private Set<UUID> messageCooldown = new HashSet<>();
+    private Set<UUID> jumping = new HashSet<>();
 
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
@@ -79,22 +80,39 @@ public class RideEvent implements Listener {
             }
             sniffer.getPathfinder().stopPathfinding();
             // Paper-only input check
-            double forwardSpeed = 0.25;
-            double backwardSpeed = 0.05;
+
             Vector base = player.getLocation().getDirection();
             base.setY(0);
             base.normalize();
             float yaw = player.getLocation().getYaw();
 
+
             if (player.getCurrentInput().isForward()) {
-                Vector move = base.clone().multiply(forwardSpeed);
-                sniffer.setVelocity(move);
+                if (jumping.contains(player.getUniqueId())) {
+                    return;
+                }
+                Vector vel = sniffer.getVelocity();
+                Vector move = base.clone().multiply(0.55);
+
+                vel.setX(move.getX());
+                vel.setZ(move.getZ());
+
+                sniffer.setVelocity(vel);
+                sniffer.setRotation(yaw,0);
+
             }
 
             else if (player.getCurrentInput().isBackward()) {
-                Vector move = base.clone().multiply(-backwardSpeed);
-                sniffer.setVelocity(move);
-                sniffer.setRotation(yaw, 0);}
+                Vector vel = sniffer.getVelocity();
+                Vector move = base.clone().multiply(-0.05);
+
+                vel.setX(move.getX());
+                vel.setZ(move.getZ());
+
+                sniffer.setVelocity(vel);
+                sniffer.setRotation(yaw,0);
+
+            }
             if(player.getCurrentInput().isJump() && sniffer.isOnGround()){
 
                 if (cooldown.contains(player.getUniqueId())) {
@@ -113,24 +131,31 @@ public class RideEvent implements Listener {
                     return;
                 }
 
-                Vector jumpStrength = player.getLocation().getDirection();
-                jumpStrength.setY(0);
-                jumpStrength.normalize();
 
-                double forwardStrength = plugin.getConfig().getDouble("SnifferJumpSpeed");
-                double upwardStrength = plugin.getConfig().getDouble("SnifferJumpHeight");
+                    Vector jumpStrength = player.getLocation().getDirection();
+                    jumpStrength.setY(0);
 
-                Vector leap = jumpStrength.multiply(forwardStrength);
-                leap.setY(upwardStrength);
 
-                sniffer.setVelocity(leap);
+                    double forwardStrength = plugin.getConfig().getDouble("SnifferJumpSpeed");
+                    double upwardStrength = plugin.getConfig().getDouble("SnifferJumpHeight");
+                    jumping.add(player.getUniqueId());
+                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                        jumping.remove(player.getUniqueId());
+                    }, 10L);
 
-                cooldown.add(player.getUniqueId());
+                    Vector leap = jumpStrength.multiply(forwardStrength);
+                    if (jumpStrength.lengthSquared() > 0) {
+                        jumpStrength.normalize().multiply(forwardStrength);
+                    }
+                    leap.setY(upwardStrength);
+                    sniffer.setVelocity(leap);
 
-                plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                    cooldown.remove(player.getUniqueId());
-                }, 60L);
-            }
+                    cooldown.add(player.getUniqueId());
+
+                    plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                        cooldown.remove(player.getUniqueId());
+                    }, 60L);
+                }
 
 
         }, 0L, 1L);
